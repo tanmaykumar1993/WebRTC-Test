@@ -29,6 +29,11 @@ const configuration = {
 };
 const peer = new RTCPeerConnection(configuration);
 
+localVideo = document.getElementById('localvideo');
+remoteVideo = document.getElementById('remotevideo');
+
+// var vid = document.createElement('video');
+
 // Step 2 - Offer peer :
 
 // Call getUserMedia with your constraints. In the success callback, add the stream to the RTCPeerconnection using the addStream method. 
@@ -49,8 +54,10 @@ navigator.webkitGetUserMedia(
   gotStream, function (e) { console.log("getUserMedia error: ", e); });
 
 function gotStream(stream) {
+  console.log("loc strm")
   //If you want too see your own camera
-  vid.src = webkitURL.createObjectURL(stream);
+  // vid.src = webkitURL.createObjectURL(stream);
+  localVideo.srcObject=stream;
   peer.addStream(stream);
   peer.createOffer(onSdpSuccess, onSdpError);
 }
@@ -64,6 +71,13 @@ function onSdpSuccess(sdp) {
   peer.setLocalDescription(sdp);
   //I use socket.io for my signaling server
   socket.emit('offer', sdp);
+}
+
+function onSdpError(sdp) {
+  console.log(sdp);
+  // peer.setLocalDescription(sdp);
+  // //I use socket.io for my signaling server
+  // socket.emit('offer', sdp);
 }
 
 // Step 5 - Answer peer :
@@ -100,18 +114,22 @@ socket.on('answer', function (sdp) {
 peer.onicecandidate = function (event) {
   console.log("New Candidate");
   console.log(event.candidate);
-
-  socket.emit('candidate', event.candidate);
+  if(event.candidate){
+    socket.emit('candidate', event.candidate);
+  }
 };
 
 socket.on('candidate', function (candidate) {
   console.log("New Remote Candidate");
   console.log(candidate);
 
-  peer.addIceCandidate(new RTCIceCandidate({
-    sdpMLineIndex: candidate.sdpMLineIndex,
-    candidate: candidate.candidate
-  }));
+  if (candidate) {
+    // peer.addIceCandidate(candidate);
+    peer.addIceCandidate(new RTCIceCandidate({
+      sdpMLineIndex: candidate.sdpMLineIndex,
+      candidate: candidate.candidate
+    }));
+  }
 });
 
 
@@ -120,7 +138,8 @@ socket.on('candidate', function (candidate) {
 // they will add the stream negociated with the SDP and that is going through the peer to peer connection. So in this event, you juste need to add your stream then to a video tag for example and it's good.
 
 peer.onaddstream = function (event) {
-  vid.src = webkitURL.createObjectURL(event.stream);
+  // vid.src = webkitURL.createObjectURL(event.stream);
+  remoteVideo.srcObject=stream;
   console.log("New Stream");
   console.log(event.stream);
 };
